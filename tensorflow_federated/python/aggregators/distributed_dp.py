@@ -279,6 +279,11 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     scale = _heuristic_scale_factor(local_stddev, self._initial_l2_clip,
                                     self._bits, self._num_clients,
                                     self._padded_dim, self._k_stddevs).numpy()
+
+    # Very large scales could lead to overflows and are not as helpful for
+    # utility.
+    scale = min(scale, 1e6)
+
     if scale <= 1:
       warnings.warn(f'The selected scale_factor {scale} <= 1. This may lead to'
                     f'substantial quantization errors. Consider increasing'
@@ -396,6 +401,11 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       new_scale = _heuristic_scale_factor(new_local_stddev, new_l2_clip,
                                           self._bits, self._num_clients,
                                           self._padded_dim, self._k_stddevs)
+
+      # Very large scales could lead to overflows and are not as helpful for
+      # utility.
+      new_scale = tf.math.minimum(new_scale, tf.constant(1e6, dtype=tf.float64))
+
       discrete_state['scale_factor'] = tf.cast(new_scale, tf.float32)
       return agg_state
 
