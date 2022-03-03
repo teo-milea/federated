@@ -52,7 +52,7 @@ class DataExecutorTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
-    self._loop = asyncio.get_event_loop()
+    self._loop = asyncio.get_running_loop()
 
   def test_data_proto_tensor(self):
     ex = data_executor.DataExecutor(

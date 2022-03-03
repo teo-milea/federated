@@ -66,7 +66,7 @@ def _create_test_executor():
 
 
 def _invoke(ex, comp, arg=None):
-  loop = asyncio.get_event_loop()
+  loop = asyncio.get_running_loop()
   v1 = loop.run_until_complete(ex.create_value(comp))
   if arg is not None:
     type_spec = v1.type_signature.parameter
@@ -472,7 +472,7 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
         intrinsic=pb.Intrinsic(uri='whimsy_intrinsic'))
     del whimsy_intrinsic
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     factory = federated_composing_strategy.FederatedComposingStrategy.factory(
         _create_bottom_stack(), [_create_worker_stack()])
     executor = federating_executor.FederatingExecutor(factory,

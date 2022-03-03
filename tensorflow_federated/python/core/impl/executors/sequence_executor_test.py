@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 def _run_sync(coroutine):
-  return asyncio.get_event_loop().run_until_complete(coroutine)
+  return asyncio.get_running_loop().run_until_complete(coroutine)
 
 
 def _make_sequence_reduce_type(element_type, accumulator_type):

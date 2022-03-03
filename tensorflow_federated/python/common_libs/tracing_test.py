@@ -44,7 +44,7 @@ class DebugLoggingTest(absltest.TestCase):
 
   def _test_debug_logging_with_async_function(self, async_fn, test_regex, *args,
                                               **kwargs):
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
       logging.set_verbosity(1)
       retval = loop.run_until_complete(async_fn(*args, **kwargs))

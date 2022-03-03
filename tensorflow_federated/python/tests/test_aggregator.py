@@ -62,7 +62,7 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  event_loop = asyncio.get_event_loop()
+  event_loop = asyncio.get_running_loop()
 
   # Catch SIGINT, which the test framework will raise.
   shutdown_event = asyncio.Event()
