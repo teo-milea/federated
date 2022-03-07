@@ -143,7 +143,7 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
     init_state = hihi_process.initialize()
     hihi_process_result, _ = hihi_process.next(init_state, client_data)
 
-    return hihi_computation_result, hihi_process_result
+    return hihi_computation_result.aggregated_hihi, hihi_process_result.aggregated_hihi
 
   @parameterized.named_parameters(
       ('data_range_error', [2, 1], 1, 2, 'sub-sampling', 1, 'central-gaussian',

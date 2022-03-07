@@ -13,8 +13,9 @@
 # limitations under the License.
 """The functions for creating the federated computation for hierarchical histogram aggregation."""
 import math
-import numpy as np
 
+import attr
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import clipping_factory
@@ -24,6 +25,20 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
+
+
+@attr.s(eq=False, frozen=True)
+class ServerOutput():
+  """The container of results.
+
+  Attributes:
+    aggregated_hihi: A `tf.RaggedTensor` of the aggregated hierarchical
+      histogram this round.
+    round_timestamp: An int64 scalar of the timestamp of the beginning of the
+      round. The value is in seconds since the epoch, in UTC.
+  """
+  aggregated_hihi = attr.ib()
+  round_timestamp = attr.ib()
 
 
 def _discretized_histogram_counts(client_data: tf.data.Dataset,
@@ -174,9 +189,17 @@ def build_hierarchical_histogram_computation(
   @computations.federated_computation(
       computation_types.at_clients(client_work.type_signature.parameter))
   def hierarchical_histogram_computation(federated_client_data):
+    round_timestamp = intrinsics.federated_eval(
+        computations.tf_computation(lambda: tf.cast(tf.timestamp(), tf.int64)),
+        placements.SERVER)
     client_histogram = intrinsics.federated_map(client_work,
                                                 federated_client_data)
-    return process.next(process.initialize(), client_histogram).result
+
+    server_output = intrinsics.federated_zip(
+        ServerOutput(
+            process.next(process.initialize(), client_histogram).result,
+            round_timestamp))
+    return server_output
 
   return hierarchical_histogram_computation
 
@@ -275,16 +298,19 @@ def build_hierarchical_histogram_process(
     # result returned by `one_round_computation`. This is to make sure the
     # generated IterativeProcess is compatible with
     # `tff.backends.mapreduce.MapReduceForm`.
-    flat_values_shape = result_type_signature.member[0].shape
-    flat_values_dtype = result_type_signature.member[0].dtype
-    nested_row_splits = np.zeros(shape=result_type_signature.member[1][0].shape)
+    flat_values_shape = result_type_signature.member[0][0].shape
+    flat_values_dtype = result_type_signature.member[0][0].dtype
+    nested_row_splits = np.zeros(
+        shape=result_type_signature.member[0][1][0].shape)
     # To generated a valid `tf.RaggedTensor`, the first element in
     # `nested_row_splits` must be 0, and the last element in `nested_row_splits`
     # must be the length of `flat_values`.
     nested_row_splits[-1] = flat_values_shape[0]
-    return tf.RaggedTensor.from_nested_row_splits(
+    initial_hihi = tf.RaggedTensor.from_nested_row_splits(
         flat_values=tf.zeros(shape=flat_values_shape, dtype=flat_values_dtype),
         nested_row_splits=[nested_row_splits])
+    initial_timestamp = tf.constant(0, dtype=tf.int64)
+    return ServerOutput(initial_hihi, initial_timestamp)
 
   @computations.federated_computation
   def init_fn():
